@@ -1,699 +1,845 @@
-// ================================================================================================================================
-// Global Init (DOMContentLoaded)
-// ================================================================================================================================
+<script>
+
+//DOM EVENT LISTENER-------------------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", function () {
+    
+    
+// DROPDOWN FUNCTIONS------------------------------------------------
 
-  // ================================================================================================================================
-  // Easing Functions (shared)
-  // ================================================================================================================================
-  function easeQuadInOut(t) {
-    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  }
-  function easeOutQuad(t) { return t * (2 - t); }
-  function easeInQuad(t) { return t * t; }
+function easeQuadInOut(t) {
+  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
 
-	
-  // ================================================================================================================================
-  // Dropdowns
-  // ================================================================================================================================
+function animateGrow(element, duration, callback) {
+  element.style.height = "auto";
+  const targetHeight = element.offsetHeight;
+  element.style.height = "0px";
+  element.style.display = "flex";
 
-  function animateGrow(element, duration, callback) {
-    element.style.height = "auto";
-    const targetHeight = element.offsetHeight;
-    element.style.height = "0px";
-    element.style.display = "flex";
-
-    let startTime;
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp;
-      let progress = Math.min((timestamp - startTime) / duration, 1);
-      element.style.height = (targetHeight * easeQuadInOut(progress)) + "px";
-      if (progress < 1) requestAnimationFrame(step);
-      else {
-        element.style.height = "auto";
-        element.style.overflow = "";
-        if (callback) callback();
-      }
+  let startTime;
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    let progress = Math.min((timestamp - startTime) / duration, 1);
+    element.style.height = (targetHeight * easeQuadInOut(progress)) + "px";
+    if (progress < 1) requestAnimationFrame(step);
+    else {
+      element.style.height = "auto";
+      element.style.overflow = "";
+      if (callback) callback();
     }
-    requestAnimationFrame(step);
   }
+  requestAnimationFrame(step);
+}
 
-  function animateShrink(element, duration, callback) {
-    const startHeight = element.offsetHeight;
-    let startTime;
-    function step(timestamp) {
-      if (!startTime) startTime = timestamp;
-      let progress = Math.min((timestamp - startTime) / duration, 1);
-      element.style.height = (startHeight * (1 - easeQuadInOut(progress))) + "px";
-      if (progress < 1) requestAnimationFrame(step);
-      else {
-        element.style.height = "0px";
-        element.style.overflow = "hidden";
-        element.style.visibility = "hidden";
-        element.style.display = "none";
-        element.removeAttribute("open");
-        if (callback) callback();
-      }
+function animateShrink(element, duration, callback) {
+  const startHeight = element.offsetHeight;
+  let startTime;
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    let progress = Math.min((timestamp - startTime) / duration, 1);
+    element.style.height = (startHeight * (1 - easeQuadInOut(progress))) + "px";
+    if (progress < 1) requestAnimationFrame(step);
+    else {
+      element.style.height = "0px";
+      element.style.overflow = "hidden";
+      element.style.visibility = "hidden";
+      element.style.display = "none";
+      element.removeAttribute("open");
+      if (callback) callback();
     }
-    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function openDropdown(menu) {
+  const parentDropdown = menu.closest("[dropdown='true']");
+  const toggle = parentDropdown?.querySelector("[dropdown-toggle='true']");
+  const icon = toggle?.querySelector("[dropdown-icon='true']");
+
+  menu.style.visibility = "visible";
+  menu.style.display = "flex";
+  menu.style.overflow = "hidden";
+  menu.style.height = "0px";
+  menu.setAttribute("open", "");
+
+  toggle?.classList.add("dropdown-open");
+  if (icon) {
+    icon.style.transition = "transform 250ms ease-in-out";
+    icon.style.transform = "rotateX(180deg)";
   }
 
-  function openDropdown(menu) {
-    const parentDropdown = menu.closest("[dropdown='true']");
-    const toggle = parentDropdown?.querySelector("[dropdown-toggle='true']");
-    const icon = toggle?.querySelector("[dropdown-icon='true']");
+  animateGrow(menu, 250, () => {
+    menu.style.height = "auto";
+  });
+}
 
-    menu.style.visibility = "visible";
-    menu.style.display = "flex";
-    menu.style.overflow = "hidden";
-    menu.style.height = "0px";
-    menu.setAttribute("open", "");
+function closeDropdown(menu) {
+  const parentDropdown = menu.closest("[dropdown='true']");
+  const toggle = parentDropdown?.querySelector("[dropdown-toggle='true']");
+  const icon = toggle?.querySelector("[dropdown-icon='true']");
 
-    toggle?.classList.add("dropdown-open");
+  menu.querySelectorAll("[dropdown-menu='true'][open]").forEach(nested => {
+    closeDropdown(nested);
+  });
+
+  animateShrink(menu, 250, () => {
+    toggle?.classList.remove("dropdown-open");
     if (icon) {
       icon.style.transition = "transform 250ms ease-in-out";
-      icon.style.transform = "rotateX(180deg)";
+      icon.style.transform = "rotateX(0deg)";
     }
+    menu.removeAttribute("open");
+  });
+}
 
-    animateGrow(menu, 250, () => {
-      menu.style.height = "auto";
-    });
+function toggleDropdown(toggle, event) {
+  const parentDropdown = toggle.closest("[dropdown='true']");
+  const menu = parentDropdown.querySelector("[dropdown-menu='true']");
+  if (!menu) return;
+
+  if (toggle.tagName === "A") event.preventDefault();
+
+  if (menu.hasAttribute("open")) {
+    menu.dataset.userClosed = "true";
+    closeDropdown(menu);
+  } else {
+    delete menu.dataset.userClosed;
+    openDropdown(menu);
   }
+}
 
-  function closeDropdown(menu) {
-    const parentDropdown = menu.closest("[dropdown='true']");
-    const toggle = parentDropdown?.querySelector("[dropdown-toggle='true']");
-    const icon = toggle?.querySelector("[dropdown-icon='true']");
+// === CLICK EVENTS ===
+document.addEventListener("click", e => {
+  const toggle = e.target.closest("[dropdown-toggle='true']");
+  if (toggle) {
+    e.stopPropagation();
+    toggleDropdown(toggle, e);
+  }
+});
 
-    menu.querySelectorAll("[dropdown-menu='true'][open]").forEach(nested => {
-      closeDropdown(nested);
-    });
+document.addEventListener("click", e => {
+  if (e.target.closest("[dropdown-menu='true']")) {
+    e.stopPropagation();
+  }
+});
 
-    animateShrink(menu, 250, () => {
-      toggle?.classList.remove("dropdown-open");
+// === HOVER RE-INIT ===
+function reinitializeDropdowns() {
+  document.querySelectorAll("[dropdown=true]").forEach(dropdown => {
+    const menu = dropdown.querySelector("[dropdown-menu='true']");
+    const toggle = dropdown.querySelector("[dropdown-toggle='true']");
+    if (!toggle || !menu) return;
+
+    const shouldBeOpen = menu.getAttribute("dropdown-state") === "open";
+    const containsSelected = menu.querySelector(".selected");
+
+    if (shouldBeOpen || containsSelected) {
+      menu.setAttribute("open", "");
+      menu.style.visibility = "visible";
+      menu.style.display = "flex";
+      menu.style.height = "auto";
+      toggle.classList.add("dropdown-open");
+
+      const icon = toggle.querySelector("[dropdown-icon='true']");
       if (icon) {
         icon.style.transition = "transform 250ms ease-in-out";
-        icon.style.transform = "rotateX(0deg)";
+        icon.style.transform = "rotateX(180deg)";
       }
-      menu.removeAttribute("open");
-    });
-  }
-
-  function toggleDropdown(toggle, event) {
-    const parentDropdown = toggle.closest("[dropdown='true']");
-    const menu = parentDropdown.querySelector("[dropdown-menu='true']");
-    if (!menu) return;
-
-    if (toggle.tagName === "A") event.preventDefault();
-
-    if (menu.hasAttribute("open")) {
-      menu.dataset.userClosed = "true";
-      closeDropdown(menu);
     } else {
+      menu.style.height = "0px";
+      menu.style.visibility = "hidden";
+      menu.style.display = "none";
+      menu.removeAttribute("open");
+    }
+
+    if (dropdown.hasAttribute("dropdown-hover-out")) {
+      dropdown.removeEventListener("mouseleave", hoverOutHandler);
+      dropdown.addEventListener("mouseleave", hoverOutHandler);
+    }
+  });
+}
+
+function hoverOutHandler(e) {
+  const dropdown = e.currentTarget;
+  const menu = dropdown.querySelector("[dropdown-menu='true']");
+  if (menu?.hasAttribute("open")) {
+    closeDropdown(menu);
+  }
+}
+
+new MutationObserver(reinitializeDropdowns).observe(document.body, {
+  childList: true,
+  subtree: true
+});
+
+reinitializeDropdowns();
+
+// === .selected Class Observer ===
+let lastSelectedId = null;
+
+const observerSelected = new MutationObserver(() => {
+  const currentSelected = document.querySelector("[dropdown-item-target].selected");
+  if (!currentSelected) return;
+
+  const newId = currentSelected.getAttribute("dropdown-item-target") || currentSelected.id;
+  if (newId === lastSelectedId) return; // Nothing changed
+  lastSelectedId = newId;
+
+  // Get all dropdown menus that should be open based on the new .selected
+  const menusToOpen = new Set();
+
+  let currentMenu = currentSelected.closest("[dropdown-menu='true']");
+  while (currentMenu) {
+    menusToOpen.add(currentMenu);
+    const parentDropdown = currentMenu.closest("[dropdown='true']");
+    currentMenu = parentDropdown?.closest("[dropdown-menu='true']");
+  }
+
+  // 🔄 Reopen newly needed menus (ignore userClosed only if .selected moved)
+  menusToOpen.forEach(menu => {
+    if (menu.dataset.userClosed === "true") {
       delete menu.dataset.userClosed;
+    }
+    if (!menu.hasAttribute("open")) {
       openDropdown(menu);
-    }
-  }
-
-  // Dropdown click and menu block propagation
-  document.addEventListener("click", e => {
-    const toggle = e.target.closest("[dropdown-toggle='true']");
-    if (toggle) {
-      e.stopPropagation();
-      toggleDropdown(toggle, e);
+      menu.dataset.autoOpened = "true";
     }
   });
 
-  document.addEventListener("click", e => {
-    if (e.target.closest("[dropdown-menu='true']")) {
-      e.stopPropagation();
-    }
-  });
+  // 🔒 Close any other menus that were autoOpened but no longer needed
+  document.querySelectorAll("[dropdown-menu='true'][open]").forEach(menu => {
+    const isInMenusToOpen = menusToOpen.has(menu);
+    const wasAutoOpened = menu.dataset.autoOpened === "true";
 
-  function reinitializeDropdowns() {
-    document.querySelectorAll("[dropdown=true]").forEach(dropdown => {
-      const menu = dropdown.querySelector("[dropdown-menu='true']");
-      const toggle = dropdown.querySelector("[dropdown-toggle='true']");
-      if (!toggle || !menu) return;
-
-      const shouldBeOpen = menu.getAttribute("dropdown-state") === "open";
-      const containsSelected = menu.querySelector(".selected");
-
-      if (shouldBeOpen || containsSelected) {
-        menu.setAttribute("open", "");
-        menu.style.visibility = "visible";
-        menu.style.display = "flex";
-        menu.style.height = "auto";
-        toggle.classList.add("dropdown-open");
-
-        const icon = toggle.querySelector("[dropdown-icon='true']");
-        if (icon) {
-          icon.style.transition = "transform 250ms ease-in-out";
-          icon.style.transform = "rotateX(180deg)";
-        }
-      } else {
-        menu.style.height = "0px";
-        menu.style.visibility = "hidden";
-        menu.style.display = "none";
-        menu.removeAttribute("open");
-      }
-
-      if (dropdown.hasAttribute("dropdown-hover-out")) {
-        dropdown.removeEventListener("mouseleave", hoverOutHandler);
-        dropdown.addEventListener("mouseleave", hoverOutHandler);
-      }
-    });
-  }
-
-  function hoverOutHandler(e) {
-    const dropdown = e.currentTarget;
-    const menu = dropdown.querySelector("[dropdown-menu='true']");
-    if (menu?.hasAttribute("open")) {
+    if (wasAutoOpened && !isInMenusToOpen) {
+      delete menu.dataset.autoOpened;
       closeDropdown(menu);
     }
+  });
+});
+
+
+
+observerSelected.observe(document.body, {
+  attributes: true,
+  subtree: true,
+  attributeFilter: ["class"]
+});
+
+// === Open Menus on First Page Load ===
+const selectedEls = Array.from(document.querySelectorAll(".selected")).filter(el =>
+  el.closest("[dropdown-tree]")
+);
+selectedEls.forEach(selected => {
+  let currentMenu = selected.closest("[dropdown-menu='true']");
+  while (currentMenu) {
+    if (!currentMenu.hasAttribute("open")) {
+      openDropdown(currentMenu);
+      currentMenu.dataset.autoOpened = "true";
+    }
+    const parentDropdown = currentMenu.closest("[dropdown='true']");
+    currentMenu = parentDropdown?.closest("[dropdown-menu='true']");
   }
+});
 
-  new MutationObserver(reinitializeDropdowns).observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-
-  reinitializeDropdowns();
+// DROPDOWN FUNCTION ENDS ------------------------------------------------
 
 
-	
-  // ================================================================================================================================
-  // Dropdown Sync with .selected
-  // ================================================================================================================================
-  let lastSelectedId = null;
-  const observerSelected = new MutationObserver(() => {
-    const currentSelected = document.querySelector("[dropdown-item-target].selected");
-    if (!currentSelected) return;
 
-    const newId = currentSelected.getAttribute("dropdown-item-target") || currentSelected.id;
-    if (newId === lastSelectedId) return;
-    lastSelectedId = newId;
+    
 
-    const menusToOpen = new Set();
-    let currentMenu = currentSelected.closest("[dropdown-menu='true']");
-    while (currentMenu) {
-      menusToOpen.add(currentMenu);
-      const parentDropdown = currentMenu.closest("[dropdown='true']");
-      currentMenu = parentDropdown?.closest("[dropdown-menu='true']");
+
+    
+    
+    
+    
+        // DARK-MODE TOGGLE------------------------------------------------------------------------            
+ 
+    const toggle = document.getElementById("dark-mode-toggle-primary");
+
+    // Function to apply dark mode immediately
+    function applyDarkMode(enabled) {
+        const elements = document.querySelectorAll('[dark-mode="true"]');
+        elements.forEach(el => {
+            if (enabled) {
+                el.classList.add("dark-mode");
+            } else {
+                el.classList.remove("dark-mode");
+            }
+        });
+
+        if (toggle) {
+            toggle.checked = enabled;
+
+            // Find the nearest wrapper div (Adjust selector if needed)
+            const wrapperDiv = toggle.closest(".dark-mode-toggle-wrapper") || toggle.parentElement;
+
+            if (wrapperDiv && wrapperDiv.parentElement) {
+                const siblingDivs = Array.from(wrapperDiv.parentElement.children);
+
+                // Apply or remove the "selected" class on the wrapper and its siblings
+                siblingDivs.forEach(div => {
+                    if (enabled) {
+                        div.classList.add("selected");
+                    } else {
+                        div.classList.remove("selected");
+                    }
+                });
+            }
+        }
     }
 
-    menusToOpen.forEach(menu => {
-      if (menu.dataset.userClosed === "true") delete menu.dataset.userClosed;
-      if (!menu.hasAttribute("open")) {
-        openDropdown(menu);
-        menu.dataset.autoOpened = "true";
-      }
-    });
+    // Check localStorage for dark mode preference
+    const isDarkMode = localStorage.getItem("darkMode") === "enabled";
 
-    document.querySelectorAll("[dropdown-menu='true'][open]").forEach(menu => {
-      const isInMenusToOpen = menusToOpen.has(menu);
-      const wasAutoOpened = menu.dataset.autoOpened === "true";
-      if (wasAutoOpened && !isInMenusToOpen) {
-        delete menu.dataset.autoOpened;
-        closeDropdown(menu);
-      }
-    });
-  });
-
-  observerSelected.observe(document.body, {
-    attributes: true,
-    subtree: true,
-    attributeFilter: ["class"]
-  });
-
-  // Open dropdowns with .selected on first load
-  const selectedEls = Array.from(document.querySelectorAll(".selected")).filter(el =>
-    el.closest("[dropdown-tree]")
-  );
-  selectedEls.forEach(selected => {
-    let currentMenu = selected.closest("[dropdown-menu='true']");
-    while (currentMenu) {
-      if (!currentMenu.hasAttribute("open")) {
-        openDropdown(currentMenu);
-        currentMenu.dataset.autoOpened = "true";
-      }
-      const parentDropdown = currentMenu.closest("[dropdown='true']");
-      currentMenu = parentDropdown?.closest("[dropdown-menu='true']");
-    }
-  });
-
-	
-
-  // ================================================================================================================================
-  // Dark Mode Toggle
-  // ================================================================================================================================
-  const toggle = document.getElementById("dark-mode-toggle-primary");
-
-  function applyDarkMode(enabled) {
-    const elements = document.querySelectorAll('[dark-mode="true"]');
-    elements.forEach(el => {
-      el.classList.toggle("dark-mode", enabled);
-    });
+    // Apply dark mode before the page renders to prevent flickering
+    applyDarkMode(isDarkMode);
 
     if (toggle) {
-      toggle.checked = enabled;
-      const wrapperDiv = toggle.closest(".dark-mode-toggle-wrapper") || toggle.parentElement;
-      if (wrapperDiv?.parentElement) {
-        Array.from(wrapperDiv.parentElement.children).forEach(div => {
-          div.classList.toggle("selected", enabled);
+        toggle.addEventListener("change", function () {
+            if (toggle.checked) {
+                localStorage.setItem("darkMode", "enabled"); // Store preference
+                applyDarkMode(true);
+            } else {
+                localStorage.removeItem("darkMode"); // Remove stored preference
+                applyDarkMode(false);
+            }
         });
-      }
     }
-  }
-
-  const isDarkMode = localStorage.getItem("darkMode") === "enabled";
-  applyDarkMode(isDarkMode);
-
-  if (toggle) {
-    toggle.addEventListener("change", function () {
-      if (toggle.checked) {
-        localStorage.setItem("darkMode", "enabled");
-        applyDarkMode(true);
-      } else {
-        localStorage.removeItem("darkMode");
-        applyDarkMode(false);
-      }
-    });
-  }
+        // END OF DARK-MODE TOGGLE------------------------------------------------------------------------            
 
 
-	
-  // ================================================================================================================================
-  // Popup Hover Animation
-  // ================================================================================================================================
-  const animate = ({ element, from, to, duration, easing, property, onComplete }) => {
-    const start = performance.now();
-    const tick = now => {
-      let progress = Math.min((now - start) / duration, 1);
-      const eased = easing(progress);
-      const current = from + (to - from) * eased;
 
-      if (property === "opacity") {
-        element.style.opacity = current;
-      } else if (property === "translateY") {
-        element.style.transform = `translateY(${current}rem)`;
-      }
 
-      if (progress < 1) requestAnimationFrame(tick);
-      else if (onComplete) onComplete();
-    };
-    requestAnimationFrame(tick);
+        // POPUP ANIMATION------------------------------------------------------------------------            
+				// Easing functions
+const easeOutQuad = t => t * (2 - t);
+const easeInQuad = t => t * t;
+
+// Animation utility
+const animate = ({ element, from, to, duration, easing, property, onComplete }) => {
+  const start = performance.now();
+
+  const tick = now => {
+    let progress = (now - start) / duration;
+    if (progress > 1) progress = 1;
+
+    const eased = easing(progress);
+    const current = from + (to - from) * eased;
+
+    if (property === "opacity") {
+      element.style.opacity = current;
+    } else if (property === "translateY") {
+      element.style.transform = `translateY(${current}rem)`;
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    } else if (onComplete) {
+      onComplete();
+    }
   };
 
-  window.observePopups = () => {
-    document.querySelectorAll('[popup=wrapper]').forEach(wrapper => {
-      if (wrapper.__popupBound) return;
-      wrapper.__popupBound = true;
+  requestAnimationFrame(tick);
+};
+
+// Main logic to attach popup behavior
+window.observePopups = () => {
+  document.querySelectorAll('[popup=wrapper]').forEach(wrapper => {
+    if (wrapper.__popupBound) return; // prevent duplicate binding
+    wrapper.__popupBound = true;
+
+    const popup = wrapper.querySelector('[popup=content]');
+    if (popup) {
+      popup.style.opacity = '0';
+      popup.style.transform = 'translateY(1rem)';
+    }
+
+    wrapper.addEventListener('mouseenter', () => {
       const popup = wrapper.querySelector('[popup=content]');
-      if (popup) {
-        popup.style.opacity = '0';
-        popup.style.transform = 'translateY(1rem)';
-      }
+      if (!popup) return;
 
-      wrapper.addEventListener('mouseenter', () => {
-        if (!popup) return;
-        popup.style.display = 'flex';
-        popup.style.visibility = 'visible';
-        animate({ element: popup, from: 0, to: 1, duration: 250, easing: t => t, property: 'opacity' });
-        animate({ element: popup, from: 1, to: 0, duration: 250, easing: easeOutQuad, property: 'translateY' });
+      popup.style.display = 'flex';
+      popup.style.visibility = 'visible';
+      popup.style.opacity = '0';
+      popup.style.transform = 'translateY(1rem)';
+
+      animate({
+        element: popup,
+        from: 0,
+        to: 1,
+        duration: 250,
+        easing: t => t,
+        property: 'opacity'
       });
 
-      wrapper.addEventListener('mouseleave', () => {
-        if (!popup) return;
-        animate({
-          element: popup,
-          from: 0,
-          to: 1,
-          duration: 250,
-          easing: easeInQuad,
-          property: 'translateY'
-        });
-        animate({
-          element: popup,
-          from: 1,
-          to: 0,
-          duration: 250,
-          easing: t => t,
-          property: 'opacity',
-          onComplete: () => {
-            popup.style.display = 'none';
-            popup.style.visibility = 'hidden';
-            popup.style.transform = 'translateY(0)';
-          }
-        });
+      animate({
+        element: popup,
+        from: 1,
+        to: 0,
+        duration: 250,
+        easing: easeOutQuad,
+        property: 'translateY'
       });
     });
-  };
 
-  window.observePopups();
+    wrapper.addEventListener('mouseleave', () => {
+      const popup = wrapper.querySelector('[popup=content]');
+      if (!popup) return;
 
-  new MutationObserver(mutations => {
-    for (const mutation of mutations) {
+      animate({
+        element: popup,
+        from: 0,
+        to: 1,
+        duration: 250,
+        easing: easeInQuad,
+        property: 'translateY'
+      });
+
+      animate({
+        element: popup,
+        from: 1,
+        to: 0,
+        duration: 250,
+        easing: t => t,
+        property: 'opacity',
+        onComplete: () => {
+          popup.style.display = 'none';
+          popup.style.visibility = 'hidden';
+          popup.style.transform = 'translateY(0)';
+        }
+      });
+    });
+  });
+};
+
+// Run it once on initial load
+window.observePopups();
+
+// OPTIONAL: Auto-setup new elements using MutationObserver
+const observer = new MutationObserver(mutations => {
+  for (const mutation of mutations) {
+    if (mutation.addedNodes.length) {
       mutation.addedNodes.forEach(node => {
-        if (node.nodeType === 1 && (node.matches?.('[popup=wrapper]') || node.querySelector?.('[popup=wrapper]')))
-          observePopups();
+        if (node.nodeType === 1) {
+          if (node.matches?.('[popup=wrapper]') || node.querySelector?.('[popup=wrapper]')) {
+            observePopups();
+          }
+        }
       });
     }
-  }).observe(document.body, { childList: true, subtree: true });
+  }
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+
+        // END OF POPUP ANIMATION------------------------------------------------------------------------            
 
 
-	
-  // ================================================================================================================================
-  // Overview Tiles Generator
-  // ================================================================================================================================
-  const containers = document.querySelectorAll('[project-overview-tiles]');
 
-  containers.forEach(container => {
-    const rawInput = container.getAttribute('project-overview-tiles');
-    let tilesToRender = [];
 
-    try {
-      tilesToRender = JSON.parse(rawInput);
-      if (!Array.isArray(tilesToRender)) throw new Error("Input is not an array.");
-    } catch (err) {
-      console.error("Invalid project-overview-tiles input:", err);
-      return;
-    }
+        // OVERVIEW TILES GENERATION------------------------------------------------------------------------            
 
-    const template = container.querySelector('[overview-tile="template"]');
-    if (!template) return;
+    		const containers = document.querySelectorAll('[project-overview-tiles]');
 
-    container.innerHTML = "";
+    containers.forEach(container => {
+      const rawInput = container.getAttribute('project-overview-tiles');
+      let tilesToRender = [];
 
-    tilesToRender.forEach((tile, index) => {
-      const clone = template.cloneNode(true);
-      clone.removeAttribute("overview-tile");
-      clone.setAttribute("data-index", index);
-      if (tile.id) clone.setAttribute("item-id", tile.id);
-
-      const titleEl = clone.querySelector('[overview-tile="title"]');
-      const subtitleEl = clone.querySelector('[overview-tile="subtitle"]');
-
-      if (titleEl) titleEl.textContent = tile.title ?? "";
-      if (subtitleEl) subtitleEl.textContent = tile.subtitle ?? "";
-
-      container.appendChild(clone);
-    });
-
-    const applyLayout = () => {
-      const tiles = Array.from(container.children);
-      const tileCount = tiles.length;
-      const isDesktop = window.innerWidth >= 1280;
-
-      container.style.display = "";
-      container.style.flexDirection = "";
-      container.style.gridTemplateColumns = "";
-      container.style.gridTemplateRows = "";
-      tiles.forEach(tile => tile.style.gridColumn = "");
-
-      if (!isDesktop) {
-        container.style.display = "flex";
-        container.style.flexDirection = "column";
+      try {
+        tilesToRender = JSON.parse(rawInput);
+        if (!Array.isArray(tilesToRender)) throw new Error("Input is not an array.");
+      } catch (err) {
+        console.error("Invalid project-overview-tiles input:", err);
         return;
       }
 
-      if (tileCount === 1) {
-        container.style.display = "flex";
-      } else {
-        container.style.display = "grid";
-        container.style.gridTemplateColumns = "1fr 1fr";
+      const template = container.querySelector('[overview-tile="template"]');
+      if (!template) return;
 
-        if (tileCount % 2 === 1) {
-          const lastTile = tiles[tileCount - 1];
-          if (lastTile) lastTile.style.gridColumn = "span 2";
-        }
-      }
-    };
+      container.innerHTML = "";
 
-    applyLayout();
+      tilesToRender.forEach((tile, index) => {
+        const clone = template.cloneNode(true);
+        clone.removeAttribute("overview-tile");
+        clone.setAttribute("data-index", index);
+        if (tile.id) clone.setAttribute("item-id", tile.id);
 
-    let resizeTimeout;
-    window.addEventListener("resize", () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(applyLayout, 100);
-    });
-  });
+        const titleEl = clone.querySelector('[overview-tile="title"]');
+        const subtitleEl = clone.querySelector('[overview-tile="subtitle"]');
 
+        if (titleEl) titleEl.textContent = tile.title ?? "";
+        if (subtitleEl) subtitleEl.textContent = tile.subtitle ?? "";
 
-	
-  // ================================================================================================================================
-  // Checkbox "Selected" Behavior
-  // ================================================================================================================================
-  const inputProto = HTMLInputElement.prototype;
-  const descriptor = Object.getOwnPropertyDescriptor(inputProto, 'checked');
-  Object.defineProperty(inputProto, 'checked', {
-    get() { return descriptor.get.call(this); },
-    set(value) {
-      const oldValue = this.checked;
-      descriptor.set.call(this, value);
-      if (oldValue !== value) {
-        this.dispatchEvent(new CustomEvent('checkedChange', {
-          bubbles: true,
-          detail: { oldValue, newValue: value }
-        }));
-      }
-    }
-  });
-
-  function toggleSelectedClass(element, shouldAdd) {
-    if (!element.classList.contains('text')) {
-      element.classList.toggle('selected', shouldAdd);
-    }
-    Array.from(element.children).forEach(child => {
-      if (child.tagName.toLowerCase() === 'div') {
-        toggleSelectedClass(child, shouldAdd);
-      }
-    });
-  }
-
-  function updateCheckboxClasses(checkbox) {
-    const container = checkbox.closest('.checkbox');
-    if (container) {
-      toggleSelectedClass(container, checkbox.checked);
-    }
-  }
-
-  function updateGroupStyles(groupVal) {
-    const groupCheckboxes = Array.from(document.querySelectorAll(`input[type="checkbox"][grouping="${groupVal}"]`));
-    if (groupCheckboxes.every(cb => !cb.checked)) {
-      groupCheckboxes.forEach(cb => {
-        const container = cb.closest('.checkbox');
-        if (container) toggleSelectedClass(container, true);
+        container.appendChild(clone);
       });
-    } else {
-      groupCheckboxes.forEach(cb => updateCheckboxClasses(cb));
-    }
-  }
 
-  function onCheckboxChange(e) {
-    const checkbox = e.target;
-    if (checkbox.hasAttribute('grouping')) {
-      updateGroupStyles(checkbox.getAttribute('grouping'));
-    } else {
-      updateCheckboxClasses(checkbox);
-    }
-  }
+      // Call layout setup once now and again on resize
+      const applyLayout = () => {
+        const tiles = Array.from(container.children);
+        const tileCount = tiles.length;
+        const isDesktop = window.innerWidth >= 1280;
 
-  document.addEventListener('change', function(e) {
-    if (e.target.matches('input[type="checkbox"]')) {
-      onCheckboxChange(e);
-    }
-  });
+        // Reset any styles first
+        container.style.display = "";
+        container.style.flexDirection = "";
+        container.style.gridTemplateColumns = "";
+        container.style.gridTemplateRows = "";
+        tiles.forEach(tile => tile.style.gridColumn = "");
 
-  document.addEventListener('checkedChange', function(e) {
-    if (e.target.matches('input[type="checkbox"]')) {
-      onCheckboxChange(e);
-    }
-  });
+        if (!isDesktop) {
+          // Mobile & tablet — stack vertically
+          container.style.display = "flex";
+          container.style.flexDirection = "column";
+          return;
+        }
 
-  // ================================================================================================================================
-  // Percentage Track Bars
-  // ================================================================================================================================
-  function initializePercentageTracks(scope = document) {
-    scope.querySelectorAll("[percentage-track]").forEach(track => {
-      try {
-        if (track.__initialized) return;
-        track.__initialized = true;
+        // Desktop logic
+        if (tileCount === 1) {
+          container.style.display = "flex";
+        } else {
+          container.style.display = "grid";
+          container.style.gridTemplateColumns = "1fr 1fr";
 
-        const schematic = track.getAttribute("percentage-track");
-        const classPrefix = track.getAttribute("class-prefix") || "";
-        const additionalClassList = (track.getAttribute("additional-class") || "").split(" ").filter(Boolean);
-        const pattern = /\[(\d+),\s*([^\]]+)\]/g;
+          // You can let Webflow handle row gaps etc.
+          // Optionally: container.style.gridAutoRows = "auto";
 
-        let match;
-        while ((match = pattern.exec(schematic)) !== null) {
-          const count = parseInt(match[1], 10);
-          let styleClass = match[2].trim();
-          if (classPrefix) styleClass = `${classPrefix}${styleClass}`;
-
-          for (let i = 0; i < count; i++) {
-            const bar = document.createElement("div");
-            bar.classList.add("percentage-track-bar", styleClass, ...additionalClassList);
-            bar.setAttribute("dark-mode", "true");
-            if (i === 0) bar.classList.add("first");
-            if (i === count - 1) bar.classList.add("last");
-            track.appendChild(bar);
+          // Special full-width bottom tiles for odd tile counts (3, 5, 7, etc.)
+          if (tileCount % 2 === 1) {
+            const lastTile = tiles[tileCount - 1];
+            if (lastTile) lastTile.style.gridColumn = "span 2";
           }
         }
-      } catch (error) {
-        console.warn("Skipping a percentage-track due to an error:", error);
-      }
-    });
-  }
+      };
 
-	
-  // ================================================================================================================================
-  // Donut Percentage Generator
-  // ================================================================================================================================
-  function initializePercentageDonuts(scope = document) {
-    scope.querySelectorAll("[percentage-donut]").forEach(donut => {
-      if (donut.__initialized) return;
-      donut.__initialized = true;
+      // Run once after rendering
+      applyLayout();
 
-      const schematic = donut.getAttribute("percentage-donut");
-      const classPrefix = donut.getAttribute("class-prefix") || "";
-      const additionalClassList = (donut.getAttribute("additional-class") || "").split(" ").filter(Boolean);
-      const pattern = /\[(\d+),\s*([^\]]+)\]/g;
-
-      const rawSegments = [];
-      let match;
-      while ((match = pattern.exec(schematic)) !== null) {
-        const count = parseInt(match[1], 10);
-        if (count <= 0) continue;
-        let styleClass = match[2].trim();
-        if (classPrefix) styleClass = `${classPrefix}${styleClass}`;
-        rawSegments.push({ styleClass, count });
-      }
-
-      if (!rawSegments.length) return;
-
-      const segmentMap = new Map();
-      rawSegments.forEach(({ styleClass, count }) => {
-        segmentMap.set(styleClass, (segmentMap.get(styleClass) || 0) + count);
+      // Run on window resize with debounce
+      let resizeTimeout;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          applyLayout();
+        }, 100);
       });
+    });
+        // END OF OVERVIEW TILES GENERATION------------------------------------------------------------------------            
 
-      const segments = Array.from(segmentMap.entries()).map(([styleClass, count]) => ({ styleClass, count }));
-      const totalUnits = segments.reduce((sum, seg) => sum + seg.count, 0);
 
-      const size = donut.offsetWidth;
-      const strokeWidth = size * 0.18;
-      const outerRadius = size / 2;
-      const innerRadius = outerRadius - strokeWidth;
-      const center = size / 2;
-      const gapPx = 1;
 
-      const svgNS = "http://www.w3.org/2000/svg";
-      const svg = document.createElementNS(svgNS, "svg");
-      svg.setAttribute("width", size);
-      svg.setAttribute("height", size);
-      svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-      svg.style.display = "block";
-      svg.style.overflow = "visible";
 
-      let currentAngle = -90;
 
-      segments.forEach(({ styleClass, count }) => {
-        const percent = count / totalUnits;
-        const segmentAngle = 360 * percent;
-        const start = currentAngle;
-        const end = start + segmentAngle;
-        currentAngle = end;
 
-        const fillDiv = document.createElement("div");
-        fillDiv.className = styleClass;
-        document.body.appendChild(fillDiv);
-        const fillColor = getComputedStyle(fillDiv).backgroundColor || "#999";
-        fillDiv.remove();
 
-        let strokeColor = fillColor;
-        if (styleClass.endsWith("-10")) {
-          const strokeClass = styleClass.replace(/-10$/, "-5");
-          const strokeDiv = document.createElement("div");
-          strokeDiv.className = strokeClass;
-          document.body.appendChild(strokeDiv);
-          strokeColor = getComputedStyle(strokeDiv).backgroundColor || fillColor;
-          strokeDiv.remove();
+
+
+
+
+});
+// END OF DOM EVENT LISTENER------------------------------------------------------------
+
+
+
+
+
+ 
+ 
+ 
+// CHECKBOX "SELECTED" STATUS CHANGE AND GROUP BEHAVIOR------------------------------------
+(function() {
+       function domReady(callback) {
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                callback();
+            } else {
+                document.addEventListener('DOMContentLoaded', callback);
+            }
         }
 
-        const path = document.createElementNS(svgNS, "path");
-        path.setAttribute("d", generateWedgePath(center, center, outerRadius, innerRadius, start, end, gapPx));
-        path.setAttribute("fill", fillColor);
-        path.setAttribute("stroke", strokeColor);
-        path.setAttribute("stroke-width", 1);
-        path.setAttribute("stroke-linejoin", "round");
-        svg.appendChild(path);
-      });
+        domReady(function() {
+            const inputProto = HTMLInputElement.prototype;
+            const descriptor = Object.getOwnPropertyDescriptor(inputProto, 'checked');
+            Object.defineProperty(inputProto, 'checked', {
+                get: function() {
+                    return descriptor.get.call(this);
+                },
+                set: function(value) {
+                    const oldValue = this.checked;
+                    descriptor.set.call(this, value);
+                    if (oldValue !== value) {
+                        this.dispatchEvent(new CustomEvent('checkedChange', {
+                            bubbles: true,
+                            detail: { oldValue, newValue: value }
+                        }));
+                    }
+                }
+            });
 
-      const hole = document.createElementNS(svgNS, "circle");
-      hole.setAttribute("cx", center);
-      hole.setAttribute("cy", center);
-      hole.setAttribute("r", innerRadius * 0.2);
-      hole.setAttribute("fill", getComputedStyle(donut).backgroundColor || "#fff");
-      svg.appendChild(hole);
+            function toggleSelectedClass(element, shouldAdd) {
+                if (!element.classList.contains('text')) {
+                    if (shouldAdd) {
+                        element.classList.add('selected');
+                    } else {
+                        element.classList.remove('selected');
+                    }
+                }
+                Array.from(element.children).forEach(child => {
+                    if (child.tagName.toLowerCase() === 'div') {
+                        toggleSelectedClass(child, shouldAdd);
+                    }
+                });
+            }
 
-      donut.innerHTML = "";
-      donut.appendChild(svg);
+            function updateCheckboxClasses(checkbox) {
+                const container = checkbox.closest('.checkbox');
+                if (container) {
+                    toggleSelectedClass(container, checkbox.checked);
+                }
+            }
+
+            function updateGroupStyles(groupVal) {
+                const groupCheckboxes = Array.from(document.querySelectorAll(`input[type="checkbox"][grouping="${groupVal}"]`));
+                if (groupCheckboxes.every(cb => !cb.checked)) {
+                    groupCheckboxes.forEach(cb => {
+                        const container = cb.closest('.checkbox');
+                        if (container) {
+                            toggleSelectedClass(container, true);
+                        }
+                    });
+                } else {
+                    groupCheckboxes.forEach(cb => updateCheckboxClasses(cb));
+                }
+            }
+
+            function onCheckboxChange(e) {
+                const checkbox = e.target;
+                if (checkbox.hasAttribute('grouping')) {
+                    const groupVal = checkbox.getAttribute('grouping');
+                    updateGroupStyles(groupVal);
+                } else {
+                    updateCheckboxClasses(checkbox);
+                }
+            }
+
+            document.addEventListener('change', function(e) {
+                if (e.target.matches('input[type="checkbox"]')) {
+                    onCheckboxChange(e);
+                }
+            });
+            document.addEventListener('checkedChange', function(e) {
+                if (e.target.matches('input[type="checkbox"]')) {
+                    onCheckboxChange(e);
+                }
+            });
+        });
+    })();
+// END OF CHECKBOX "SELECTED" STATUS CHANGE AND GROUP BEHAVIOR------------------------------------------
+
+
+// PERCENTAGE TRACK FUNCTION------------------------------------------
+
+function initializePercentageTracks(scope = document) {
+  scope.querySelectorAll("[percentage-track]").forEach(track => {
+    try {
+      if (track.__initialized) return; // prevent double init
+      track.__initialized = true;
+
+      let schematic = track.getAttribute("percentage-track");
+      let classPrefix = track.getAttribute("class-prefix") || "";
+      let additionalClasses = track.getAttribute("additional-class");
+      let additionalClassList = additionalClasses ? additionalClasses.split(" ") : [];
+
+      let pattern = /\[(\d+),\s*([^\]]+)\]/g;
+      let match;
+
+      while ((match = pattern.exec(schematic)) !== null) {
+        let count = parseInt(match[1], 10);
+        let styleClass = match[2].trim();
+
+        if (classPrefix) {
+          styleClass = `${classPrefix}${styleClass}`;
+        }
+
+        for (let i = 0; i < count; i++) {
+          let bar = document.createElement("div");
+          bar.classList.add("percentage-track-bar", styleClass);
+          additionalClassList.forEach(cls => bar.classList.add(cls));
+          bar.setAttribute("dark-mode", "true");
+
+          if (i === 0) bar.classList.add("first");
+          if (i === count - 1) bar.classList.add("last");
+
+          track.appendChild(bar);
+        }
+      }
+    } catch (error) {
+      console.warn("Skipping a percentage-track due to an error:", error);
+    }
+  });
+}
+// END OF PERCENTAGE TRACK FUNCTION------------------------------------------
+
+
+// DONUT PERCENTAGE GENERATOR -----------------------------------------------
+function initializePercentageDonuts(scope = document) {
+  scope.querySelectorAll("[percentage-donut]").forEach(donut => {
+    if (donut.__initialized) return;
+    donut.__initialized = true;
+
+    const schematic = donut.getAttribute("percentage-donut");
+    const classPrefix = donut.getAttribute("class-prefix") || "";
+    const additionalClasses = donut.getAttribute("additional-class");
+    const additionalClassList = additionalClasses ? additionalClasses.split(" ") : [];
+
+    const pattern = /\[(\d+),\s*([^\]]+)\]/g;
+    const rawSegments = [];
+    let match;
+
+    while ((match = pattern.exec(schematic)) !== null) {
+      const count = parseInt(match[1], 10);
+      if (count <= 0) continue;
+      let styleClass = match[2].trim();
+      if (classPrefix) styleClass = `${classPrefix}${styleClass}`;
+      rawSegments.push({ styleClass, count });
+    }
+
+    if (rawSegments.length === 0) return;
+
+    const segmentMap = new Map();
+    rawSegments.forEach(({ styleClass, count }) => {
+      segmentMap.set(styleClass, (segmentMap.get(styleClass) || 0) + count);
     });
 
-    function polarToCartesian(cx, cy, r, angleDegrees) {
-      const angleRadians = angleDegrees * (Math.PI / 180);
-      return {
-        x: cx + r * Math.cos(angleRadians),
-        y: cy + r * Math.sin(angleRadians),
-      };
-    }
+    const segments = Array.from(segmentMap.entries())
+      .map(([styleClass, count]) => ({ styleClass, count }))
+      .filter(seg => seg.count > 0);
 
-    function offsetPerpendicular(x, y, cx, cy, amount) {
-      const dx = x - cx, dy = y - cy;
-      const length = Math.hypot(dx, dy);
-      if (length === 0) return { x, y };
-      const nx = -dy / length, ny = dx / length;
-      return {
-        x: x + nx * amount,
-        y: y + ny * amount
-      };
-    }
+    const totalUnits = segments.reduce((sum, seg) => sum + seg.count, 0);
 
-    function generateWedgePath(cx, cy, outerR, innerR, startDeg, endDeg, gapPx) {
-      const gap = gapPx / 2;
-      const start = polarToCartesian(cx, cy, outerR, startDeg);
-      const end = polarToCartesian(cx, cy, outerR, endDeg);
-      const startIn = polarToCartesian(cx, cy, innerR, startDeg);
-      const endIn = polarToCartesian(cx, cy, innerR, endDeg);
+    const size = donut.offsetWidth;
+    const strokeWidth = size * 0.18;
+    const outerRadius = size / 2;
+    const innerRadius = outerRadius - strokeWidth;
+    const center = size / 2;
+    const gapPx = 1;
 
-      const p1 = offsetPerpendicular(start.x, start.y, cx, cy, gap);
-      const p2 = offsetPerpendicular(end.x, end.y, cx, cy, -gap);
-      const p3 = offsetPerpendicular(endIn.x, endIn.y, cx, cy, -gap);
-      const p4 = offsetPerpendicular(startIn.x, startIn.y, cx, cy, gap);
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", size);
+    svg.setAttribute("height", size);
+    svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+    svg.style.display = "block";
+    svg.style.overflow = "visible";
 
-      const largeArc = ((endDeg - startDeg + 360) % 360) > 180 ? 1 : 0;
+    let currentAngle = -90;
 
-      return `
-        M ${p1.x} ${p1.y}
-        A ${outerR} ${outerR} 0 ${largeArc} 1 ${p2.x} ${p2.y}
-        L ${p3.x} ${p3.y}
-        A ${innerR} ${innerR} 0 ${largeArc} 0 ${p4.x} ${p4.y}
-        Z
-      `.trim();
-    }
+    segments.forEach(({ styleClass, count }) => {
+      const percent = count / totalUnits;
+      const segmentAngle = 360 * percent;
+      const start = currentAngle;
+      const end = start + segmentAngle;
+      currentAngle = end;
+
+      const fillDiv = document.createElement("div");
+      fillDiv.className = styleClass;
+      document.body.appendChild(fillDiv);
+      const fillColor = getComputedStyle(fillDiv).backgroundColor || "#999";
+      fillDiv.remove();
+
+      let strokeColor = fillColor;
+      if (styleClass.endsWith("-10")) {
+        const strokeClass = styleClass.replace(/-10$/, "-5");
+        const strokeDiv = document.createElement("div");
+        strokeDiv.className = strokeClass;
+        document.body.appendChild(strokeDiv);
+        strokeColor = getComputedStyle(strokeDiv).backgroundColor || fillColor;
+        strokeDiv.remove();
+      }
+
+      const path = document.createElementNS(svgNS, "path");
+      path.setAttribute("d", generateWedgePath(center, center, outerRadius, innerRadius, start, end, gapPx));
+      path.setAttribute("fill", fillColor);
+      path.setAttribute("stroke", strokeColor);
+      path.setAttribute("stroke-width", 1);
+      path.setAttribute("stroke-linejoin", "round");
+      svg.appendChild(path);
+    });
+
+    // Center hole
+    const hole = document.createElementNS(svgNS, "circle");
+    hole.setAttribute("cx", center);
+    hole.setAttribute("cy", center);
+    hole.setAttribute("r", innerRadius * 0.2);
+    hole.setAttribute("fill", getComputedStyle(donut).backgroundColor || "#fff");
+    svg.appendChild(hole);
+
+    donut.innerHTML = "";
+    donut.appendChild(svg);
+  });
+
+  function polarToCartesian(cx, cy, r, angleDegrees) {
+    const angleRadians = angleDegrees * (Math.PI / 180);
+    return {
+      x: cx + r * Math.cos(angleRadians),
+      y: cy + r * Math.sin(angleRadians),
+    };
   }
 
-  // Initialize on load
-  initializePercentageTracks();
-  initializePercentageDonuts();
+  function offsetPerpendicular(x, y, cx, cy, amount) {
+    const dx = x - cx, dy = y - cy;
+    const length = Math.hypot(dx, dy);
+    if (length === 0) return { x, y };
+    const nx = -dy / length, ny = dx / length;
+    return {
+      x: x + nx * amount,
+      y: y + ny * amount
+    };
+  }
+
+  function generateWedgePath(cx, cy, outerR, innerR, startDeg, endDeg, gapPx) {
+    const gap = gapPx / 2;
+    const start = polarToCartesian(cx, cy, outerR, startDeg);
+    const end = polarToCartesian(cx, cy, outerR, endDeg);
+    const startIn = polarToCartesian(cx, cy, innerR, startDeg);
+    const endIn = polarToCartesian(cx, cy, innerR, endDeg);
+
+    const p1 = offsetPerpendicular(start.x, start.y, cx, cy, gap);
+    const p2 = offsetPerpendicular(end.x, end.y, cx, cy, -gap);
+    const p3 = offsetPerpendicular(endIn.x, endIn.y, cx, cy, -gap);
+    const p4 = offsetPerpendicular(startIn.x, startIn.y, cx, cy, gap);
+
+    const largeArc = ((endDeg - startDeg + 360) % 360) > 180 ? 1 : 0;
+
+    return `
+      M ${p1.x} ${p1.y}
+      A ${outerR} ${outerR} 0 ${largeArc} 1 ${p2.x} ${p2.y}
+      L ${p3.x} ${p3.y}
+      A ${innerR} ${innerR} 0 ${largeArc} 0 ${p4.x} ${p4.y}
+      Z
+    `.trim();
+  }
+}
+
+initializePercentageDonuts();
 
 
-  // ================================================================================================
-  // CONTENT AND DROPDOWN TREE RENDERING
-  // ================================================================================================
+// END OF DONUT PERCENTAGE GENERATOR -----------------------------------------
 
 
-	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 document.addEventListener("DOMContentLoaded", () => {
   const scrollOffset = window.innerHeight * 0.4;
   const scrollContainer = document.getElementById("page");
@@ -709,9 +855,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const usedIdMap = {};
   const dropdownLinks = [];
 
-  // ================================================================================================
+  // ================================
   // 1. CONTENT-TREE RENDERING
-  // ================================================================================================
+  // ================================
 
   const sourceContainer = document.querySelector("[content-tree-items='true']");
   if (!sourceContainer) return;
@@ -756,9 +902,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const grouped = container.hasAttribute("content-tree-group") && hasGroupTabs(groupId);
 
-    // ================================================================================================
+    // ================================
     // 1A. SELECTION / INITIAL DISPLAY
-    // ================================================================================================
+    // ================================
 
     if (grouped) {
       let activeId = topLevelIds[0];
@@ -798,9 +944,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // ================================================================================================
+    // ================================
     // 1B. TAB NAVIGATION LOGIC
-    // ================================================================================================
+    // ================================
 
     document.querySelectorAll(`[content-tree-tab][content-tree-group="${groupId}"]`).forEach(btn => {
       btn.addEventListener("click", () => {
@@ -825,9 +971,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   sourceContainer.remove();
 
-  // ================================================================================================
+  // ================================
   // 1C. BUILD NESTED STRUCTURE RECURSIVELY
-  // ================================================================================================
+  // ================================
 
  function buildNested(entry, sourceMap, usedMap, depth = 0) {
   const indent = "  ".repeat(depth); // For visual hierarchy in logs
@@ -953,9 +1099,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.contentTreeIdMap = usedIdMap;
 
-  // ================================================================================================
+  // ================================
   // 2. DROPDOWN-TREE GENERATION
-  // ================================================================================================
+  // ================================
 
   document.querySelectorAll("[dropdown-tree]").forEach(container => {
     let tree;
@@ -1044,9 +1190,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return clone;
   }
 
-  // ================================================================================================
+  // ================================
   // 3. SCROLL-BASED .SELECTED SYNC
-  // ================================================================================================
+  // ================================
 
   let ticking = false;
 
@@ -1127,4 +1273,4 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-});
+</script>
